@@ -1,0 +1,12 @@
+name = "PhyXEngine"
+uuid = "c19accf8-4bdf-4d14-aeb1-7e3bad59dc63"
+authors = ["JaydevSR <jaydevsrao@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[compat]
+KrylovKit = "0.8.3"
+LinearAlgebra = "1.11.0"
