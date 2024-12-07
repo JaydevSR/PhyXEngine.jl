@@ -4,15 +4,15 @@
 #? - `deflation` scales worse than `eigensolve` from KrylovKit.jl so for more than one exremal eigenvalue it is better to use the latter
 #? It could be possible to improve the perfomance of `deflation`
 
-#! A serious problem, the eigenvalues for a real valued matrix can be complex if it is not symmetric, the code doesn't allow for this
-
 rayleigh_quotient(A::AbstractArray{T, 2}, x::Vector) where T = dot(x, A, x) / dot(x, x)
 
 """Calculate the dominant eigenvalue and corresponding eigenvector of a diagonalisable (eg. Hermitian) matrix"""
 function powiter(A::AbstractArray{T, 2}; tol::Float64=1e-6, start_vector=nothing) where T
     n, m = size(A)
     n != m ? throw(ArgumentError("Input must be a square matrix.")) : nothing
-    x = isnothing(start_vector) ? rand(T, n) : start_vector
+
+    CT = complex(float(T))
+    x = isnothing(start_vector) ? rand(CT, n) : start_vector
 
     normalize!(x)
     RQold = 0
@@ -59,8 +59,9 @@ function deflation(A::Hermitian{T}, num_vals::Int;
     n, m = size(A)
     num_vals > n ? throw(ArgumentError("Number of eigenvalues requested exceeds matrix size.")) : nothing
 
-    vals = zeros(T, num_vals)
-    vecs = zeros(T, n, num_vals)
+    CT = complex(float(T))
+    vals = zeros(CT, num_vals)
+    vecs = zeros(CT, n, num_vals)
     for i in 1:num_vals
         ei, xi = solver(A; kwargs...)
         vals[i] = ei
@@ -70,3 +71,4 @@ function deflation(A::Hermitian{T}, num_vals::Int;
 
     return vals, vecs
 end
+
