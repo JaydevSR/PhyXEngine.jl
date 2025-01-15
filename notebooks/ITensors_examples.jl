@@ -223,6 +223,130 @@ let
 	@show energy
 end
 
+# ╔═╡ e86d44b1-cb60-482c-afa7-3cff3bc373bf
+#DMRG with mixed local Hilbert space
+let
+	N=100
+	sites = siteinds(n -> isodd(n) ? "S=1/2" : "S=1", N)
+
+	J12 = 1.0
+	J11 = 0.5
+	J22 = 0.5
+
+	os = OpSum()
+	for j = 1:N-1
+		os += 0.5 * J12, "S+", j, "S-", j+1
+		os += 0.5 * J12, "S-", j, "S+", j+1
+		os += J12, "Sz", j, "Sz", j+1
+	end
+	for j = 1:2:N-2
+		os += 0.5 * J11, "S+", j, "S-", j+2
+		os += 0.5 * J11, "S-", j, "S+", j+2
+		os += J11, "Sz", j, "Sz", j+2
+	end
+	for j = 2:2:N-2
+		os += 0.5 * J22, "S+", j, "S-", j+2
+		os += 0.5 * J22, "S-", j, "S+", j+2
+		os += J22, "Sz", j, "Sz", j+2
+	end
+	H = MPO(os, sites)
+
+	nsweeps = 10
+	maxdim = [10, 10, 20, 40, 80, 100, 140, 180, 200, 200]
+	cutoff = [1E-8]
+
+	Ψ0 = random_mps(sites; linkdims=4)
+
+	energy, psi = dmrg(H, Ψ0; nsweeps, maxdim, cutoff)
+	@show energy
+end
+
+# ╔═╡ 213e7e26-308a-4ef0-86f9-0e70ee8dc1a3
+#DMRG with a 2D Hamiltonian
+let
+	Ny = 5
+	Nx = 10
+
+	N = Nx * Ny
+
+	sites = siteinds("S=1/2", N; conserve_qns=true)
+
+	# an array of lattice bonds
+	lattice = square_lattice(Nx, Ny; yperiodic=false)
+
+	os = OpSum()
+	for b in lattice
+		os += 0.5, "S+", b.s1, "S-", b.s2
+		os += 0.5, "S-", b.s1, "S+", b.s2
+	end
+	H = MPO(os, sites)
+
+	state = [isodd(n) ? "Up" : "Dn" for n=1:N]
+	Ψ0 = random_mps(sites, state; linkdims=10)
+
+	nsweeps = 5
+	maxdim = [20, 60, 100, 200, 400]
+	cutoff = [1e-8]
+
+	energy, psi = dmrg(H, Ψ0; nsweeps, maxdim, cutoff)
+	@show energy
+end
+
+# ╔═╡ e6678b90-7daa-4242-b7cc-5aa74c41196f
+# First excited state of transverse field Ising model
+let
+  N = 20
+
+  sites = siteinds("S=1/2", N)
+
+  h = 4.0  # transverse field
+  weight = 20h 
+
+  # Factors of 4 and 2 are to rescale
+  # spin operators into Pauli matrices
+  os = OpSum()
+  for j=1:N-1
+    os -= 4, "Sz", j, "Sz", j+1
+  end
+  for j=1:N
+    os -= 2h, "Sx", j;
+  end
+  H = MPO(os, sites)
+
+  nsweeps = 30
+  maxdim = [10, 10, 10, 20, 20, 40, 80, 100, 200, 200]
+  cutoff = [1E-8]
+  noise = [1E-6]  # noise in the variational search
+
+  # ground state
+  Ψ0_in = random_mps(sites; linkdims=2)
+  E0, Ψ0 = dmrg(H ,Ψ0_in; nsweeps, maxdim, cutoff, noise)
+
+  # first excited state
+  Ψ1_in = random_mps(sites; linkdims=2)
+  E1, Ψ1 = dmrg(H, [Ψ0], Ψ1_in; nsweeps, maxdim, cutoff, noise, weight)
+
+  # Check psi1 is orthogonal to psi0
+  @show inner(Ψ0, Ψ1)
+
+
+  # The expected gap of the transverse field Ising
+  # model is given by Eg = 2*|h-1|
+  #
+  # (The DMRG gap will have finite-size corrections)
+
+  println("DMRG energy gap = ", E1 - E0);
+  println("Theoretical gap = ", 2 * abs(h - 1));
+
+  # Compute the second excited state psi2
+  Ψ2_in = random_mps(sites; linkdims=2)
+  E2, Ψ2 = dmrg(H, [Ψ0, Ψ1], Ψ2_in; nsweeps, maxdim, cutoff, noise, weight)
+
+  # Check psi2 is orthogonal to psi0 and psi1
+  @show inner(Ψ2, Ψ0)
+  @show inner(Ψ2, Ψ1)
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -1038,5 +1162,8 @@ version = "17.4.0+2"
 # ╠═a8ec997a-49c9-4cfb-99ca-a74e8d66008c
 # ╟─e11decd6-8fa4-4d3f-aa93-005d555051a1
 # ╠═8290c1fa-95fd-4d53-b970-c903eb721750
+# ╠═e86d44b1-cb60-482c-afa7-3cff3bc373bf
+# ╠═213e7e26-308a-4ef0-86f9-0e70ee8dc1a3
+# ╠═e6678b90-7daa-4242-b7cc-5aa74c41196f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
